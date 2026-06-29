@@ -651,7 +651,7 @@ async function showProfile(sid, from) {
   showScreen('profile');
   const txList = document.getElementById('tx-list');
   txList.innerHTML = '<div class="loading">กำลังโหลด...</div>';
-  const snap = await db.collection('transactions').where('studentId','==',sid).orderBy('timestamp','asc').get();
+  const snap = await db.collection('transactions').where('studentId','==',sid).get();
   const txs = [];
   snap.forEach(d=>txs.push({id:d.id,...d.data()}));
   txCache[sid] = txs;
@@ -768,7 +768,7 @@ async function showReport() {
 // ── Export Excel ───────────────────────────────────────────
 async function exportExcel() {
   showToast('กำลังเตรียมข้อมูล...');
-  const snap=await db.collection('transactions').orderBy('timestamp','asc').get();
+  const snap=await db.collection('transactions').get();
   const rows=[['วันที่','ชื่อ-นามสกุล','ประเภท','จำนวนเงิน','ครูผู้บันทึก']];
   snap.forEach(d=>{
     const t=d.data();
