@@ -877,29 +877,32 @@ async function showReport() {
 
 // ── Report teacher detail toggle ───────────────────────
 function toggleReportTeacher(tid) {
-  const detail = document.getElementById('r-detail-'+tid);
-  const chev   = document.getElementById('r-chev-'+tid);
-  const isOpen = detail.classList.contains('open');
+  var detail = document.getElementById('r-detail-'+tid);
+  var chev   = document.getElementById('r-chev-'+tid);
+  var isOpen = detail.classList.contains('open');
   if (isOpen) {
     detail.classList.remove('open');
     chev.classList.remove('open');
     detail.innerHTML = '';
     return;
   }
-  const map = tid==='t1' ? (window._reportT1Map||{}) : (window._reportT2Map||{});
-  const students = STUDENTS.filter(s => map[s.id] !== undefined && map[s.id] !== 0);
+  var map = tid==='t1' ? (window._reportT1Map||{}) : (window._reportT2Map||{});
+  var students = STUDENTS.filter(function(s){ return map[s.id] !== undefined && map[s.id] !== 0; });
   if (!students.length) {
     detail.innerHTML = '<div class="ts-detail-row"><div class="ts-detail-name" style="color:#9ca3af;">ยังไม่มีรายการ</div></div>';
   } else {
-    const sorted = [...students].sort((a,b)=>(map[b.id]||0)-(map[a.id]||0));
-    detail.innerHTML = sorted.map(s => {
-      const amt = map[s.id] || 0;
-      return '<div class="ts-detail-row" onclick="showProfile(''+s.id+'','report')">'
-        + '<div class="ts-detail-name">'+s.prefix+s.first+' '+s.last+'</div>'
-        + '<div class="ts-detail-amt">'+amt.toLocaleString()+' ฿</div>'
-        + '<div class="ts-detail-arrow">›</div>'
-        + '</div>';
-    }).join('');
+    var sorted = students.slice().sort(function(a,b){ return (map[b.id]||0)-(map[a.id]||0); });
+    var html = '';
+    for (var i=0; i<sorted.length; i++) {
+      var s = sorted[i];
+      var amt = map[s.id] || 0;
+      html += '<div class="ts-detail-row" onclick="showProfile(\'' + s.id + '\',\'report\')">'
+            + '<div class="ts-detail-name">' + s.prefix + s.first + ' ' + s.last + '</div>'
+            + '<div class="ts-detail-amt">' + amt.toLocaleString() + ' ฿</div>'
+            + '<div class="ts-detail-arrow">›</div>'
+            + '</div>';
+    }
+    detail.innerHTML = html;
   }
   detail.classList.add('open');
   chev.classList.add('open');
