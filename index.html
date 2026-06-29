@@ -136,6 +136,26 @@
   .av-blue  { background: #dbeafe; color: #1e40af; }
   .bd-name { flex: 1; font-size: 13px; color: #374151; }
   .bd-amt  { font-size: 13px; font-weight: 600; color: #1a6b4a; }
+  .bd-teacher-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid #f3f4f6;
+    cursor: pointer; background: #fff;
+  }
+  .bd-teacher-row:active { background: #f9fafb; }
+  .bd-row2 { border-top: 1px solid #f3f4f6; }
+  .bd-chev { color: #9ca3af; font-size: 18px; transition: transform 0.2s; }
+  .bd-chev.open { transform: rotate(90deg); }
+  .bd-detail { display: none; background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
+  .bd-detail.open { display: block; }
+  .bd-detail-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px 8px 52px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 12px;
+  }
+  .bd-detail-row:last-child { border-bottom: none; }
+  .bd-detail-name { flex: 1; color: #374151; }
+  .bd-detail-amt  { font-weight: 600; color: #1a6b4a; }
 
   /* REPORT */
   .report-header { background: #1a6b4a; color: #fff; padding: 12px 16px; }
@@ -323,8 +343,20 @@
       👥 ดูแยกตามครูผู้บันทึก
     </button>
     <div class="breakdown-box" id="bd-box">
-      <div class="bd-row"><div class="bd-av av-green">กญ</div><div class="bd-name">ครูกัญญานัฐ</div><div class="bd-amt" id="bd-t1">0 ฿</div></div>
-      <div class="bd-row"><div class="bd-av av-blue">พศ</div><div class="bd-name">ครูพงศธร</div><div class="bd-amt" id="bd-t2">0 ฿</div></div>
+      <div class="bd-teacher-row" onclick="toggleTeacherDetail('t1')">
+        <div class="bd-av av-green">กญ</div>
+        <div class="bd-name">ครูกัญญานัฐ</div>
+        <div class="bd-amt" id="bd-t1">0 ฿</div>
+        <div class="bd-chev" id="bd-chev-t1">›</div>
+      </div>
+      <div class="bd-detail" id="bd-detail-t1"></div>
+      <div class="bd-teacher-row bd-row2" onclick="toggleTeacherDetail('t2')">
+        <div class="bd-av av-blue">พศ</div>
+        <div class="bd-name">ครูพงศธร</div>
+        <div class="bd-amt" id="bd-t2">0 ฿</div>
+        <div class="bd-chev" id="bd-chev-t2">›</div>
+      </div>
+      <div class="bd-detail" id="bd-detail-t2"></div>
     </div>
   </div>
   <div class="bottom-nav">
@@ -662,6 +694,17 @@ async function showProfile(sid, from) {
   document.getElementById('prof-total').textContent = totalDep.toLocaleString()+' ฿';
   document.getElementById('bd-t1').textContent = t1.toLocaleString()+' ฿';
   document.getElementById('bd-t2').textContent = t2.toLocaleString()+' ฿';
+  const perStudentT1 = {}, perStudentT2 = {};
+  txs.forEach(t=>{
+    const sign = t.type==='dep' ? 1 : -1;
+    if(t.teacherId==='t1') perStudentT1[t.studentId] = (perStudentT1[t.studentId]||0) + sign*t.amount;
+    else if(t.teacherId==='t2') perStudentT2[t.studentId] = (perStudentT2[t.studentId]||0) + sign*t.amount;
+  });
+  window._bdPerStudent = { t1: perStudentT1, t2: perStudentT2 };
+  ['t1','t2'].forEach(tid=>{
+    document.getElementById('bd-detail-'+tid).classList.remove('open');
+    document.getElementById('bd-chev-'+tid).classList.remove('open');
+  });
   if (!txs.length) { txList.innerHTML='<p style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 0;">ยังไม่มีรายการ</p>'; return; }
   txList.innerHTML='';
   const lastIdx=txs.length-1;
@@ -689,6 +732,35 @@ function toggleBreakdown() {
   bdOpen=!bdOpen;
   document.getElementById('bd-box').classList.toggle('open',bdOpen);
   document.getElementById('bd-toggle-btn').textContent = bdOpen?'🔼 ซ่อนข้อมูลแยกครู':'👥 ดูแยกตามครูผู้บันทึก';
+}
+
+function toggleTeacherDetail(tid) {
+  const detail = document.getElementById('bd-detail-'+tid);
+  const chev   = document.getElementById('bd-chev-'+tid);
+  const isOpen = detail.classList.contains('open');
+  if (isOpen) {
+    detail.classList.remove('open');
+    chev.classList.remove('open');
+    return;
+  }
+  // build list
+  const data = (window._bdPerStudent || {})[tid] || {};
+  if (!Object.keys(data).length) {
+    detail.innerHTML = '<div class="bd-detail-row"><div class="bd-detail-name" style="color:#9ca3af;">ยังไม่มีรายการ</div></div>';
+  } else {
+    const rows = STUDENTS
+      .filter(s => data[s.id] !== undefined)
+      .map(s => {
+        const amt = data[s.id] || 0;
+        return '<div class="bd-detail-row">'
+          + '<div class="bd-detail-name">'+s.first+' '+s.last+'</div>'
+          + '<div class="bd-detail-amt">'+amt.toLocaleString()+' ฿</div>'
+          + '</div>';
+      }).join('');
+    detail.innerHTML = rows || '<div class="bd-detail-row"><div class="bd-detail-name" style="color:#9ca3af;">ยังไม่มีรายการ</div></div>';
+  }
+  detail.classList.add('open');
+  chev.classList.add('open');
 }
 
 // ── Edit ───────────────────────────────────────────────────
