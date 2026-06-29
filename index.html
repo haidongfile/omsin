@@ -194,6 +194,23 @@
   .ts-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid #f3f4f6; background: #fff; }
   .ts-name { flex: 1; font-size: 13px; font-weight: 600; color: #374151; }
   .ts-amt  { font-size: 14px; font-weight: 600; color: #1a6b4a; }
+  .ts-clickable { cursor: pointer; }
+  .ts-clickable:active { background: #f9fafb; }
+  .ts-chev { color: #9ca3af; font-size: 18px; transition: transform 0.2s; margin-left: 4px; }
+  .ts-chev.open { transform: rotate(90deg); }
+  .ts-detail { display: none; background: #f9fafb; }
+  .ts-detail.open { display: block; }
+  .ts-detail-row {
+    display: flex; align-items: center;
+    padding: 8px 14px 8px 50px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 12px; cursor: pointer;
+  }
+  .ts-detail-row:last-child { border-bottom: none; }
+  .ts-detail-row:active { background: #e5e7eb; }
+  .ts-detail-name { flex: 1; color: #374151; }
+  .ts-detail-amt  { font-weight: 600; color: #1a6b4a; margin-right: 6px; }
+  .ts-detail-arrow { color: #d1d5db; font-size: 14px; }
 
   /* OVERLAYS */
   .overlay {
@@ -384,9 +401,21 @@
     <button class="export-btn" onclick="exportExcel()">📊 Export Excel</button>
   </div>
   <div class="teacher-summary-box">
-    <div class="ts-header">ยอดแยกตามครูผู้บันทึก</div>
-    <div class="ts-row"><div class="bd-av av-green" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">กญ</div><div class="ts-name">ครูกัญญานัฐ</div><div class="ts-amt" id="r-t1">0 ฿</div></div>
-    <div class="ts-row"><div class="bd-av av-blue" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">พศ</div><div class="ts-name">ครูพงศธร</div><div class="ts-amt" id="r-t2">0 ฿</div></div>
+    <div class="ts-header">ยอดแยกตามครูผู้บันทึก · กดชื่อครูดูรายชื่อนักเรียน</div>
+    <div class="ts-row ts-clickable" onclick="toggleReportTeacher('t1')">
+      <div class="bd-av av-green" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">กญ</div>
+      <div class="ts-name">ครูกัญญานัฐ</div>
+      <div class="ts-amt" id="r-t1">0 ฿</div>
+      <div class="ts-chev" id="r-chev-t1">›</div>
+    </div>
+    <div class="ts-detail" id="r-detail-t1"></div>
+    <div class="ts-row ts-clickable" onclick="toggleReportTeacher('t2')" style="border-top:1px solid #f3f4f6;">
+      <div class="bd-av av-blue" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">พศ</div>
+      <div class="ts-name">ครูพงศธร</div>
+      <div class="ts-amt" id="r-t2">0 ฿</div>
+      <div class="ts-chev" id="r-chev-t2">›</div>
+    </div>
+    <div class="ts-detail" id="r-detail-t2"></div>
   </div>
   <div class="bottom-nav">
     <button class="nav-item" id="nav2-home" onclick="showHome()">
@@ -820,6 +849,15 @@ async function showReport() {
   const rt2=Object.values(t2Map).reduce((a,b)=>a+b,0);
   document.getElementById('r-t1').textContent=rt1.toLocaleString()+' ฿';
   document.getElementById('r-t2').textContent=rt2.toLocaleString()+' ฿';
+  window._reportT1Map = t1Map;
+  window._reportT2Map = t2Map;
+  // reset detail panels
+  ['t1','t2'].forEach(tid=>{
+    const d=document.getElementById('r-detail-'+tid);
+    const c=document.getElementById('r-chev-'+tid);
+    if(d) { d.classList.remove('open'); d.innerHTML=''; }
+    if(c) c.classList.remove('open');
+  });
   const sorted=[...STUDENTS].sort((a,b)=>(balMap[b.id]||0)-(balMap[a.id]||0));
   const rl=document.getElementById('rank-list'); rl.innerHTML='';
   sorted.forEach((s,rank)=>{
@@ -835,6 +873,36 @@ async function showReport() {
     `;
     rl.appendChild(div);
   });
+}
+
+// ── Report teacher detail toggle ───────────────────────
+function toggleReportTeacher(tid) {
+  const detail = document.getElementById('r-detail-'+tid);
+  const chev   = document.getElementById('r-chev-'+tid);
+  const isOpen = detail.classList.contains('open');
+  if (isOpen) {
+    detail.classList.remove('open');
+    chev.classList.remove('open');
+    detail.innerHTML = '';
+    return;
+  }
+  const map = tid==='t1' ? (window._reportT1Map||{}) : (window._reportT2Map||{});
+  const students = STUDENTS.filter(s => map[s.id] !== undefined && map[s.id] !== 0);
+  if (!students.length) {
+    detail.innerHTML = '<div class="ts-detail-row"><div class="ts-detail-name" style="color:#9ca3af;">ยังไม่มีรายการ</div></div>';
+  } else {
+    const sorted = [...students].sort((a,b)=>(map[b.id]||0)-(map[a.id]||0));
+    detail.innerHTML = sorted.map(s => {
+      const amt = map[s.id] || 0;
+      return '<div class="ts-detail-row" onclick="showProfile(''+s.id+'','report')">'
+        + '<div class="ts-detail-name">'+s.prefix+s.first+' '+s.last+'</div>'
+        + '<div class="ts-detail-amt">'+amt.toLocaleString()+' ฿</div>'
+        + '<div class="ts-detail-arrow">›</div>'
+        + '</div>';
+    }).join('');
+  }
+  detail.classList.add('open');
+  chev.classList.add('open');
 }
 
 // ── Export Excel ───────────────────────────────────────────
